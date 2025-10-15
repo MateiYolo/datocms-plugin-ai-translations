@@ -13,9 +13,8 @@ export async function chatComplete(
   } = {}
 ) {
   const payload: any = {
-    model: opts.model || 'gpt-4o-mini-2024-07-18',
+    model: opts.model || 'gpt-5',
     messages,
-    temperature: opts.temperature ?? 0.2,
     ...(opts.maxTokens != null ? { max_completion_tokens: opts.maxTokens } : {}),
     ...(opts.extra || {}),
   };
