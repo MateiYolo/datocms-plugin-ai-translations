@@ -53,7 +53,6 @@ export type StreamCallbacks = {
  * @param {string} toLocale - Target locale code
  * @param {string} fromLocale - Source locale code
  * @param {string} fieldType - The DatoCMS field type
- * @param {OpenAI} openai - OpenAI client instance
  * @param {string} fieldTypePrompt - Additional prompt for special field types
  * @param {string} apiToken - DatoCMS API token
  * @param {string | undefined} fieldId - ID of the field being translated
@@ -168,7 +167,6 @@ export async function translateFieldValue(
  * @param {ctxParamsType} pluginParams - Plugin configuration parameters
  * @param {string} toLocale - Target locale code
  * @param {string} fromLocale - Source locale code 
- * @param {OpenAI} openai - OpenAI client instance
  * @param {string} apiToken - DatoCMS API token
  * @param {string} fieldType - The specific block field type
  * @param {StreamCallbacks} streamCallbacks - Optional callbacks for streaming translations

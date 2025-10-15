@@ -190,7 +190,6 @@ export default function TranslationProgressModal({ ctx, parameters }: Translatio
                 toLocale,
                 fromLocale,
                 fieldType,
-                openai,
                 fieldTypePrompt,
                 accessToken,
                 fieldTypeDictionary[field].id,

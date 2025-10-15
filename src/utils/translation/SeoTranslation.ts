@@ -12,7 +12,6 @@
  * - Format localized SEO content for better user experience
  */
 
-import type OpenAI from 'openai';
 import { chatComplete, type ChatMsg } from '../../lib/openaiProxy';
 import locale from 'locale-codes';
 import type { ctxParamsType } from '../../entrypoints/Config/ConfigScreen';
@@ -53,7 +52,6 @@ type StreamCallbacks = {
  * @param {ctxParamsType} pluginParams - Plugin configuration parameters
  * @param {string} toLocale - Target locale code for translation
  * @param {string} fromLocale - Source locale code for translation
- * @param {OpenAI} openai - OpenAI client instance
  * @param {string} fieldTypePrompt - Additional prompt for SEO format instructions
  * @param {StreamCallbacks} streamCallbacks - Optional callbacks for streaming updates
  * @param {string} recordContext - Optional context about the record being translated
@@ -64,7 +62,6 @@ export async function translateSeoFieldValue(
   pluginParams: ctxParamsType,
   toLocale: string,
   fromLocale: string,
-  openai: OpenAI,
   fieldTypePrompt: string,
   streamCallbacks?: StreamCallbacks,
   recordContext = ''
@@ -106,10 +103,10 @@ export async function translateSeoFieldValue(
 
     logger.info('Requesting completion via proxy');
     const messages: ChatMsg[] = [{ role: 'user', content: formattedPrompt }];
-    const translatedText = await chatComplete(
-      messages,
-      pluginParams.gptModel || 'gpt-4o-mini'
-    );
+    const translatedText = await chatComplete(messages, {
+      model: pluginParams.gptModel || 'gpt-5',
+      maxTokens: 800,
+    });
     if (streamCallbacks?.onComplete) {
       streamCallbacks.onComplete();
     }

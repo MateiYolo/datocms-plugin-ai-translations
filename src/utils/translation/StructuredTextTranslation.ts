@@ -12,7 +12,6 @@
  * - Handle streaming responses from OpenAI API
  */
 
-import type OpenAI from 'openai';
 import { chatComplete, type ChatMsg } from '../../lib/openaiProxy';
 import type { ctxParamsType } from '../../entrypoints/Config/ConfigScreen';
 import { translateFieldValue } from './TranslateField';
@@ -103,7 +102,6 @@ export async function translateStructuredTextValue(
   pluginParams: ctxParamsType,
   toLocale: string,
   fromLocale: string,
-  openai: OpenAI,
   apiToken: string,
   environment: string,
   streamCallbacks?: StreamCallbacks,
@@ -190,10 +188,10 @@ IMPORTANT: Your response must be a valid JSON array of strings with EXACTLY ${te
 
   try {
     const messages: ChatMsg[] = [{ role: 'user', content: prompt }];
-    const translatedText = await chatComplete(
-      messages,
-      pluginParams.gptModel || 'gpt-4o-mini'
-    );
+    const translatedText = await chatComplete(messages, {
+      model: pluginParams.gptModel || 'gpt-5',
+      maxTokens: 800,
+    });
     if (streamCallbacks?.onComplete) {
       streamCallbacks.onComplete();
     }
@@ -252,7 +250,6 @@ IMPORTANT: Your response must be a valid JSON array of strings with EXACTLY ${te
           toLocale,
           fromLocale,
           'rich_text', // Use rich_text instead of block
-          openai,
           '',
           apiToken,
           '',

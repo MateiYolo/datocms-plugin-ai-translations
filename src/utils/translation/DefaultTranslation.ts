@@ -45,7 +45,6 @@ type StreamCallbacks = {
  * @param {ctxParamsType} pluginParams - Configuration parameters for the plugin
  * @param {string} toLocale - Target locale code
  * @param {string} fromLocale - Source locale code
- * @param {OpenAI} openai - OpenAI client instance
  * @param {StreamCallbacks} streamCallbacks - Optional callbacks for streaming translation updates
  * @param {string} recordContext - Additional context about the record being translated
  * @returns {Promise<unknown>} - The translated text
@@ -55,7 +54,6 @@ export async function translateDefaultFieldValue(
   pluginParams: ctxParamsType,
   toLocale: string,
   fromLocale: string,
-  openai: OpenAI,
   streamCallbacks?: StreamCallbacks,
   recordContext = ''
 ): Promise<unknown> {
@@ -112,10 +110,10 @@ export async function translateDefaultFieldValue(
 
   try {
     const messages: ChatMsg[] = [{ role: 'user', content: prompt }];
-    const translatedText = await chatComplete(
-      messages,
-      pluginParams.gptModel || 'gpt-4o-mini'
-    );
+    const translatedText = await chatComplete(messages, {
+      model: pluginParams.gptModel || 'gpt-5',
+      maxTokens: 800,
+    });
     logger.logResponse('Received translation result', translatedText);
     if (streamCallbacks?.onComplete) {
       streamCallbacks.onComplete();

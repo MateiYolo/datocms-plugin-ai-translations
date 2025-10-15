@@ -51,7 +51,6 @@ export async function translateFileFieldValue(
   pluginParams: ctxParamsType,
   toLocale: string,
   fromLocale: string,
-  openai: OpenAI,
   streamCallbacks?: StreamCallbacks,
   recordContext = ''
 ): Promise<unknown> {
@@ -116,7 +115,6 @@ export async function translateFileFieldValue(
  * @param {ctxParamsType} pluginParams - Plugin configuration parameters
  * @param {string} toLocale - Target locale code for translation
  * @param {string} fromLocale - Source locale code for translation
- * @param {OpenAI} openai - Instance of OpenAI client for translation
  * @param {StreamCallbacks} streamCallbacks - Optional callbacks for streaming progress updates
  * @param {string} recordContext - Optional context about the record to improve translation quality
  * @returns {Promise<unknown>} - Updated file object with translated metadata
@@ -126,7 +124,6 @@ async function translateSingleFileMetadata(
   pluginParams: ctxParamsType,
   toLocale: string,
   fromLocale: string,
-  openai: OpenAI,
   streamCallbacks?: StreamCallbacks,
   recordContext = ''
 ): Promise<unknown> {
@@ -181,10 +178,10 @@ async function translateSingleFileMetadata(
 
   try {
     const messages: ChatMsg[] = [{ role: 'user', content: prompt }];
-    const translatedText = await chatComplete(
-      messages,
-      pluginParams.gptModel || 'gpt-4o-mini'
-    );
+    const translatedText = await chatComplete(messages, {
+      model: pluginParams.gptModel || 'gpt-5',
+      maxTokens: 800,
+    });
     if (streamCallbacks?.onComplete) {
       streamCallbacks.onComplete();
     }

@@ -264,7 +264,6 @@ export async function translateRecordFields(
           toLocale,
           fromLocale,
           fieldType,
-          openai,
           fieldTypePrompt,
           accessToken,
           fieldTypeDictionary[field].id,

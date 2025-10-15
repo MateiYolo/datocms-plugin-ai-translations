@@ -203,7 +203,6 @@ export async function translateRecordFields(
         locale,
         sourceLocale,
         fieldType,
-        openai,
         fieldTypePrompt,
         ctx.currentUserAccessToken as string,
         field.id,
