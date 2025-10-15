@@ -13,6 +13,7 @@
  */
 
 import { chatComplete, type ChatMsg } from '../../lib/openaiProxy';
+import { translateLarge } from '../../lib/chunker';
 import locale from 'locale-codes';
 import type { ctxParamsType } from '../../entrypoints/Config/ConfigScreen';
 import { createLogger } from '../logging/Logger';
@@ -102,11 +103,26 @@ export async function translateSeoFieldValue(
     console.log(formattedPrompt)
 
     logger.info('Requesting completion via proxy');
-    const messages: ChatMsg[] = [{ role: 'user', content: formattedPrompt }];
-    const translatedText = await chatComplete(messages, {
-      model: pluginParams.gptModel || 'gpt-5',
-      maxTokens: 800,
-    });
+    const content = formattedPrompt;
+    const isLarge = content.length > 6000;
+    const baseMsgs: ChatMsg[] = [
+      {
+        role: 'user',
+        content: isLarge
+          ? 'Translate the following text to the target language. Preserve formatting. I will send it in parts.'
+          : content,
+      },
+    ];
+
+    const translatedText = isLarge
+      ? await translateLarge(baseMsgs, content, (msgs, opts) => chatComplete(msgs as ChatMsg[], opts), {
+          model: pluginParams.gptModel || 'gpt-5',
+          maxTokens: 800,
+        })
+      : await chatComplete(baseMsgs, {
+          model: pluginParams.gptModel || 'gpt-5',
+          maxTokens: 800,
+        });
     if (streamCallbacks?.onComplete) {
       streamCallbacks.onComplete();
     }

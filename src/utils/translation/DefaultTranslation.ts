@@ -12,8 +12,8 @@
  * - Supporting contextual information to improve translation quality
  */
 
-import type OpenAI from 'openai';
 import { chatComplete, type ChatMsg } from '../../lib/openaiProxy';
+import { translateLarge } from '../../lib/chunker';
 import type { ctxParamsType } from '../../entrypoints/Config/ConfigScreen';
 import { createLogger } from '../logging/Logger';
 
@@ -109,11 +109,26 @@ export async function translateDefaultFieldValue(
   logger.logPrompt('Translating default field value', prompt);
 
   try {
-    const messages: ChatMsg[] = [{ role: 'user', content: prompt }];
-    const translatedText = await chatComplete(messages, {
-      model: pluginParams.gptModel || 'gpt-5',
-      maxTokens: 800,
-    });
+    const content = prompt;
+    const isLarge = content.length > 6000;
+    const baseMsgs: ChatMsg[] = [
+      {
+        role: 'user',
+        content: isLarge
+          ? 'Translate the following text to the target language. Preserve formatting. I will send it in parts.'
+          : content,
+      },
+    ];
+
+    const translatedText = isLarge
+      ? await translateLarge(baseMsgs, content, (msgs, opts) => chatComplete(msgs as ChatMsg[], opts), {
+          model: pluginParams.gptModel || 'gpt-5',
+          maxTokens: 800,
+        })
+      : await chatComplete(baseMsgs, {
+          model: pluginParams.gptModel || 'gpt-5',
+          maxTokens: 800,
+        });
     logger.logResponse('Received translation result', translatedText);
     if (streamCallbacks?.onComplete) {
       streamCallbacks.onComplete();
