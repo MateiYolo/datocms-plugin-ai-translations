@@ -307,11 +307,6 @@ IMPORTANT: Your response must be a valid JSON array of strings with EXACTLY ${ex
 
       logger.info('Successfully translated structured text');
       return cleanedReconstructedObject;
-    } catch (jsonError) {
-      logger.error('Failed to parse translation response as JSON', jsonError);
-      // More descriptive error information to help with debugging
-      logger.error('Raw response text', { text: translatedText });
-      return fieldValue;
     }
   } catch (error) {
     logger.error('Error during structured text translation', error);
