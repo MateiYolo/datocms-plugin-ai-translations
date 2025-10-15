@@ -12,7 +12,6 @@
  * - Stream translation progress back to the UI
  */
 
-import type OpenAI from 'openai';
 import { chatComplete, type ChatMsg } from '../../lib/openaiProxy';
 import type { ctxParamsType } from '../../entrypoints/Config/ConfigScreen';
 import { createLogger } from '../logging/Logger';
@@ -80,7 +79,6 @@ export async function translateFileFieldValue(
           pluginParams,
           toLocale,
           fromLocale,
-          openai,
           streamCallbacks,
           recordContext
         );
@@ -97,7 +95,6 @@ export async function translateFileFieldValue(
     pluginParams,
     toLocale,
     fromLocale,
-    openai,
     streamCallbacks,
     recordContext
   );

@@ -2,7 +2,6 @@
  * Utilities for handling DatoCMS record translations via dropdown actions
  */
 import type { buildClient } from '@datocms/cma-client-browser';
-import type OpenAI from 'openai';
 import type { ctxParamsType } from '../../entrypoints/Config/ConfigScreen';
 import type { ExecuteItemsDropdownActionCtx } from 'datocms-plugin-sdk';
 import { translateFieldValue, generateRecordContext, findExactLocaleKey } from './TranslateField';
@@ -107,7 +106,7 @@ function hasKeyDeep(obj: Record<string, unknown>, targetKey: string): boolean {
 export async function translateAndUpdateRecords(
   records: DatoCMSRecordFromAPI[],
   client: ReturnType<typeof buildClient>,
-  openai: OpenAI,
+  _openai: Record<string, never>,
   fromLocale: string,
   toLocale: string,
   fieldTypeDictionary: Record<string, { editor: string; id: string; isLocalized: boolean }>,
@@ -171,7 +170,7 @@ export async function translateAndUpdateRecords(
         fromLocale,
         toLocale,
         fieldTypeDictionary,
-        openai,
+        _openai,
         pluginParams,
         ctx.currentUserAccessToken || '',
         ctx.environment
@@ -205,7 +204,7 @@ export async function translateRecordFields(
   fromLocale: string,
   toLocale: string,
   fieldTypeDictionary: Record<string, { editor: string; id: string; isLocalized: boolean }>,
-  openai: OpenAI,
+  _openai: Record<string, never>,
   pluginParams: ctxParamsType,
   accessToken: string,
   environment: string

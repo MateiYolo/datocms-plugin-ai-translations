@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Canvas, Button, Spinner } from 'datocms-react-ui';
 import type { RenderModalCtx } from 'datocms-plugin-sdk';
 import type { buildClient } from '@datocms/cma-client-browser';
-import type OpenAI from 'openai';
 import {
   fetchRecordsWithPagination,
   buildFieldTypeDictionary,
@@ -83,13 +82,13 @@ export default function TranslationProgressModal({ ctx, parameters }: Translatio
         const records = await fetchRecordsWithPagination(client, itemIds);
         
         // OpenAI client not needed; translations go via proxy
-        const openai = {} as unknown as OpenAI;
+        const openaiPlaceholder = {} as Record<string, never>;
 
         // Build a dictionary of field types for the first record's item type
         const fieldTypeDictionary = await buildFieldTypeDictionary(client, records[0].item_type.id);
         
         // Process and translate each record
-        await translateRecords(records, client, openai, fromLocale, toLocale, fieldTypeDictionary);
+        await translateRecords(records, client, openaiPlaceholder, fromLocale, toLocale, fieldTypeDictionary);
         
       } catch (error) {
         if (isMounted) {
@@ -110,7 +109,7 @@ export default function TranslationProgressModal({ ctx, parameters }: Translatio
   const translateRecords = async (
     records: DatoCMSRecordFromAPI[],
     client: ReturnType<typeof buildClient>,
-    openai: OpenAI,
+    _openai: Record<string, never>,
     fromLocale: string,
     toLocale: string,
     fieldTypeDictionary: Record<string, { editor: string; id: string; isLocalized: boolean }>
