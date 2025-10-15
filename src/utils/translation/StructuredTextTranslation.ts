@@ -13,6 +13,7 @@
  */
 
 import type OpenAI from 'openai';
+import { chatComplete, type ChatMsg } from '../../lib/openaiProxy';
 import type { ctxParamsType } from '../../entrypoints/Config/ConfigScreen';
 import { translateFieldValue } from './TranslateField';
 import { createLogger } from '../logging/Logger';
@@ -188,27 +189,14 @@ IMPORTANT: Your response must be a valid JSON array of strings with EXACTLY ${te
   logger.logPrompt('Structured text translation prompt', prompt);
 
   try {
-    let translatedText = '';
-    const stream = await openai.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: pluginParams.gptModel,
-      stream: true,
-    });
-
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content || '';
-      translatedText += content;
-
-      if (streamCallbacks?.onStream) {
-        streamCallbacks.onStream(translatedText);
-      }
-    }
-
+    const messages: ChatMsg[] = [{ role: 'user', content: prompt }];
+    const translatedText = await chatComplete(
+      messages,
+      pluginParams.gptModel || 'gpt-4o-mini'
+    );
     if (streamCallbacks?.onComplete) {
       streamCallbacks.onComplete();
     }
-
-    // Log response
     logger.logResponse('Structured text translation response', translatedText);
 
     try {

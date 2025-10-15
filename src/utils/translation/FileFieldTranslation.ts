@@ -13,6 +13,7 @@
  */
 
 import type OpenAI from 'openai';
+import { chatComplete, type ChatMsg } from '../../lib/openaiProxy';
 import type { ctxParamsType } from '../../entrypoints/Config/ConfigScreen';
 import { createLogger } from '../logging/Logger';
 
@@ -179,29 +180,15 @@ async function translateSingleFileMetadata(
   logger.logPrompt('File metadata translation prompt', prompt);
 
   try {
-    let translatedText = '';
-    const stream = await openai.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: pluginParams.gptModel,
-      stream: true,
-    });
-
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content || '';
-      translatedText += content;
-      if (streamCallbacks?.onStream) {
-        streamCallbacks.onStream(translatedText);
-      }
-    }
-
+    const messages: ChatMsg[] = [{ role: 'user', content: prompt }];
+    const translatedText = await chatComplete(
+      messages,
+      pluginParams.gptModel || 'gpt-4o-mini'
+    );
     if (streamCallbacks?.onComplete) {
       streamCallbacks.onComplete();
     }
-
-    // Log the response
     logger.logResponse('File metadata translation response', translatedText);
-
-    // Parse the translated metadata
     const translatedMetadata = JSON.parse(translatedText || '{}');
 
     // Update the original file object with translated metadata

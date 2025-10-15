@@ -16,6 +16,7 @@
 
 import type { RenderItemFormSidebarPanelCtx } from 'datocms-plugin-sdk';
 import OpenAI from 'openai';
+import { chatComplete, type ChatMsg } from '../lib/openaiProxy';
 import {
   type ctxParamsType,
   modularContentVariations,
@@ -84,11 +85,8 @@ export async function translateRecordFields(
   sourceLocale: string,
   options: TranslateOptions = {}
 ): Promise<void> {
-  // Initialize OpenAI client for translation
-  const openai = new OpenAI({
-    apiKey: pluginParams.apiKey,
-    dangerouslyAllowBrowser: true,
-  });
+  // OpenAI client no longer used for streaming; keep placeholder for types
+  const openai = new OpenAI({ apiKey: 'placeholder', dangerouslyAllowBrowser: true });
 
   const currentFormValues = ctx.formValues;
 

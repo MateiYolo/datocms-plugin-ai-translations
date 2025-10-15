@@ -10,7 +10,6 @@
  * rich text, and file fields.
  */
 
-import OpenAI from 'openai';
 import { buildClient } from '@datocms/cma-client-browser';
 import type { ExecuteFieldDropdownActionCtx } from 'datocms-plugin-sdk';
 import { 
@@ -68,7 +67,6 @@ export async function translateFieldValue(
   toLocale: string,
   fromLocale: string,
   fieldType: string,
-  openai: OpenAI,
   fieldTypePrompt: string,
   apiToken: string,
   fieldId: string | undefined,
@@ -109,7 +107,6 @@ export async function translateFieldValue(
         pluginParams,
         toLocale,
         fromLocale,
-        openai,
         fieldTypePrompt,
         streamCallbacks,
         recordContext
@@ -120,7 +117,6 @@ export async function translateFieldValue(
         pluginParams,
         toLocale,
         fromLocale,
-        openai,
         apiToken,
         environment,
         streamCallbacks,
@@ -133,7 +129,6 @@ export async function translateFieldValue(
         pluginParams,
         toLocale,
         fromLocale,
-        openai,
         apiToken,
         fieldType,
         environment,
@@ -147,7 +142,6 @@ export async function translateFieldValue(
         pluginParams,
         toLocale,
         fromLocale,
-        openai,
         streamCallbacks,
         recordContext
       );
@@ -157,7 +151,6 @@ export async function translateFieldValue(
         pluginParams,
         toLocale,
         fromLocale,
-        openai,
         streamCallbacks,
         recordContext
       );
@@ -187,7 +180,6 @@ async function translateBlockValue(
   pluginParams: ctxParamsType,
   toLocale: string,
   fromLocale: string,
-  openai: OpenAI,
   apiToken: string,
   fieldType: string,
   environment: string,
@@ -276,7 +268,6 @@ async function translateBlockValue(
           toLocale,
           fromLocale,
           fieldTypeDictionary[field]?.editor || 'text',
-          openai,
           nestedPrompt,
           apiToken,
           fieldTypeDictionary[field]?.id || '',
@@ -321,11 +312,6 @@ async function TranslateField(
   recordContext = ''
 ) {
   const apiToken = await ctx.currentUserAccessToken;
-  // Create OpenAI client instance
-  const openai = new OpenAI({
-    apiKey: pluginParams.apiKey,
-    dangerouslyAllowBrowser: true,
-  });
 
   try {
     const logger = createLogger(pluginParams, 'TranslateField');
@@ -361,7 +347,6 @@ async function TranslateField(
       toLocale,
       fromLocale,
       fieldType,
-      openai,
       fieldTypePrompt,
       apiToken as string,
       fieldApiKey, // This is already a string because of the nullish coalescing operator

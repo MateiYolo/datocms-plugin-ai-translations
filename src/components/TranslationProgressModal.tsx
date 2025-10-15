@@ -10,7 +10,7 @@ import {
   shouldTranslateField,
   prepareFieldTypePrompt
 } from '../utils/translation/ItemsDropdownUtils';
-import { buildDatoCMSClient, createOpenAIClient } from '../utils/clients';
+import { buildDatoCMSClient } from '../utils/clients';
 import type { ctxParamsType } from '../entrypoints/Config/ConfigScreen';
 import { translateFieldValue, generateRecordContext, findExactLocaleKey } from '../utils/translation/TranslateField';
 import './TranslationProgressModal.css';
@@ -82,8 +82,8 @@ export default function TranslationProgressModal({ ctx, parameters }: Translatio
         // Fetch all records with pagination
         const records = await fetchRecordsWithPagination(client, itemIds);
         
-        // Create OpenAI client
-        const openai = createOpenAIClient(pluginParams.apiKey);
+        // OpenAI client not needed; translations go via proxy
+        const openai = {} as unknown as OpenAI;
 
         // Build a dictionary of field types for the first record's item type
         const fieldTypeDictionary = await buildFieldTypeDictionary(client, records[0].item_type.id);

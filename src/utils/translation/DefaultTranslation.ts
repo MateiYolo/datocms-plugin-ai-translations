@@ -13,6 +13,7 @@
  */
 
 import type OpenAI from 'openai';
+import { chatComplete, type ChatMsg } from '../../lib/openaiProxy';
 import type { ctxParamsType } from '../../entrypoints/Config/ConfigScreen';
 import { createLogger } from '../logging/Logger';
 
@@ -110,40 +111,15 @@ export async function translateDefaultFieldValue(
   logger.logPrompt('Translating default field value', prompt);
 
   try {
-    let translatedText = '';
-    const stream = await openai.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: pluginParams.gptModel,
-      stream: true,
-    }, {
-      signal: streamCallbacks?.abortSignal
-    });
-
-    for await (const chunk of stream) {
-      // Check for cancellation during streaming
-      if (streamCallbacks?.checkCancellation?.()) {
-        logger.info('Translation cancelled by user');
-        if (streamCallbacks?.onComplete) {
-          streamCallbacks.onComplete();
-        }
-        return translatedText || fieldValue; // Return whatever we have so far or the original
-      }
-
-      const content = chunk.choices[0]?.delta?.content || '';
-      translatedText += content;
-
-      if (streamCallbacks?.onStream) {
-        streamCallbacks.onStream(translatedText);
-      }
-    }
-
+    const messages: ChatMsg[] = [{ role: 'user', content: prompt }];
+    const translatedText = await chatComplete(
+      messages,
+      pluginParams.gptModel || 'gpt-4o-mini'
+    );
+    logger.logResponse('Received translation result', translatedText);
     if (streamCallbacks?.onComplete) {
       streamCallbacks.onComplete();
     }
-
-    // Log the response received from OpenAI
-    logger.logResponse('Received translation result', translatedText);
-
     return translatedText;
   } catch (error) {
     logger.error('Translation error', error);

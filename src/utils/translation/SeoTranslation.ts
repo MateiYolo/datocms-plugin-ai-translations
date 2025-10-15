@@ -13,6 +13,7 @@
  */
 
 import type OpenAI from 'openai';
+import { chatComplete, type ChatMsg } from '../../lib/openaiProxy';
 import locale from 'locale-codes';
 import type { ctxParamsType } from '../../entrypoints/Config/ConfigScreen';
 import { createLogger } from '../logging/Logger';
@@ -103,22 +104,12 @@ export async function translateSeoFieldValue(
 
     console.log(formattedPrompt)
 
-    let translatedText = '';
-    logger.info('Initiating OpenAI stream for translation');
-    const stream = await openai.chat.completions.create({
-      messages: [{ role: 'user', content: formattedPrompt }],
-      model: pluginParams.gptModel,
-      stream: true,
-    });
-
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content || '';
-      translatedText += content;
-      if (streamCallbacks?.onStream) {
-        streamCallbacks.onStream(translatedText);
-      }
-    }
-
+    logger.info('Requesting completion via proxy');
+    const messages: ChatMsg[] = [{ role: 'user', content: formattedPrompt }];
+    const translatedText = await chatComplete(
+      messages,
+      pluginParams.gptModel || 'gpt-4o-mini'
+    );
     if (streamCallbacks?.onComplete) {
       streamCallbacks.onComplete();
     }
