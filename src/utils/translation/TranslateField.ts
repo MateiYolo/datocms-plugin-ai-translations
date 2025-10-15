@@ -194,6 +194,8 @@ async function translateBlockValue(
   ) as Array<Record<string, unknown>>;
 
   const client = buildClient({ apiToken, environment });
+  // Cache block model fields to avoid repeated CMA requests which can cause 429s
+  const fieldsDictionaryCache = new Map<string, Record<string, { editor: string; id: string }>>();
 
   for (const block of cleanedFieldValue) {
     // Determine the block model ID
@@ -204,15 +206,33 @@ async function translateBlockValue(
       continue;
     }
 
-    // Fetch fields for this specific block
-    const fields = await client.fields.list(blockModelId as string);
-    const fieldTypeDictionary = fields.reduce((acc, field) => {
-      acc[field.api_key] = {
-        editor: field.appearance.editor,
-        id: field.id,
-      };
-      return acc;
-    }, {} as Record<string, { editor: string; id: string }>);
+    // Fetch fields for this specific block, with cache and simple retry on 429s
+    let fieldTypeDictionary = fieldsDictionaryCache.get(blockModelId as string);
+    if (!fieldTypeDictionary) {
+      let lastError: unknown;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const fields = await client.fields.list(blockModelId as string);
+          fieldTypeDictionary = fields.reduce((acc, field) => {
+            acc[field.api_key] = {
+              editor: field.appearance.editor,
+              id: field.id,
+            };
+            return acc;
+          }, {} as Record<string, { editor: string; id: string }>);
+          fieldsDictionaryCache.set(blockModelId as string, fieldTypeDictionary);
+          break;
+        } catch (err: unknown) {
+          lastError = err;
+          // crude backoff (helps with 429 responses)
+          await new Promise((r) => setTimeout(r, 200 * attempt));
+        }
+      }
+      if (!fieldTypeDictionary) {
+        logger.warning('Could not fetch block fields metadata; skipping block translation', { blockModelId, error: lastError });
+        continue;
+      }
+    }
 
     // Translate each field within the block
     if (block.attributes) {
