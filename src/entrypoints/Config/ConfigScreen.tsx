@@ -20,7 +20,6 @@ import {
 } from 'datocms-react-ui';
 import s from '../styles.module.css';
 import { useEffect, useState, useMemo } from 'react';
-import OpenAI from 'openai';
 import ReactTextareaAutosize from 'react-textarea-autosize';
 import { defaultPrompt } from '../../prompts/DefaultPrompt';
 import { buildClient } from '@datocms/cma-client-browser';
@@ -87,16 +86,20 @@ function sortGptModels(a: string, b: string): number {
  * @param setOptions - Callback to set the retrieved models in state
  */
 async function fetchAvailableModels(
-  apiKey: string,
+  _apiKey: string,
   setOptions: React.Dispatch<React.SetStateAction<string[]>>,
   setGptModel: React.Dispatch<React.SetStateAction<string>>
 ) {
   try {
-    // Create an instance of the OpenAI API client
-    const openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
-
-    // Fetch the list of all available models
-    const list = await openai.models.list();
+    // Temporary: skip live model fetch when no direct SDK allowed
+    const list = { data: [
+      { id: 'gpt-5' },
+      { id: 'gpt-4.1' },
+      { id: 'gpt-4.1-mini' },
+      { id: 'gpt-4.1-nano' },
+      { id: 'gpt-4o' },
+      { id: 'gpt-4o-mini' },
+    ] } as unknown as { data: { id: string }[] };
 
     // Keep only GPT-4.1/4o chat-capable families; exclude realtime/audio/embedding/etc.
     const ids = list.data.map((m) => m.id);

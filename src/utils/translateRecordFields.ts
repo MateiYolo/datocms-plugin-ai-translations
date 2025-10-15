@@ -15,7 +15,6 @@
  */
 
 import type { RenderItemFormSidebarPanelCtx } from 'datocms-plugin-sdk';
-import OpenAI from 'openai';
 import { chatComplete, type ChatMsg } from '../lib/openaiProxy';
 import {
   type ctxParamsType,
@@ -85,8 +84,7 @@ export async function translateRecordFields(
   sourceLocale: string,
   options: TranslateOptions = {}
 ): Promise<void> {
-  // OpenAI client no longer used for streaming; keep placeholder for types
-  const openai = new OpenAI({ apiKey: 'placeholder', dangerouslyAllowBrowser: true });
+  // OpenAI SDK removed; all calls go through helper proxy
 
   const currentFormValues = ctx.formValues;
 
@@ -95,8 +93,8 @@ export async function translateRecordFields(
     (field) => field?.relationships.item_type.data.id === ctx.itemType.id
   );
 
-  // Process each field
-  for (const field of fieldsArray) {
+    // Process each field sequentially (fault-tolerant)
+    for (const field of fieldsArray) {
     if (!field || !field.attributes) {
       continue; // Skip invalid fields
     }
@@ -156,7 +154,7 @@ export async function translateRecordFields(
     // Use field label for UI display, falling back to API key if no label is defined
     const fieldLabel = field.attributes.label || field.attributes.api_key;
 
-    // Process each target locale for this field
+    // Process each target locale for this field sequentially
     for (const locale of targetLocales) {
       // Check for cancellation before starting each locale
       if (options.checkCancellation?.()) {
@@ -197,25 +195,30 @@ export async function translateRecordFields(
       const recordContext = generateRecordContext(ctx.formValues, sourceLocale);
 
       // Perform the actual translation with streaming support
-      const translatedFieldValue = await translateFieldValue(
-        (fieldValue as LocalizedField)[sourceLocale],
-        pluginParams,
-        locale,
-        sourceLocale,
-        fieldType,
-        fieldTypePrompt,
-        ctx.currentUserAccessToken as string,
-        field.id,
-        ctx.environment,
-        streamCallbacks,
-        recordContext
-      );
+      try {
+        const translatedFieldValue = await translateFieldValue(
+          (fieldValue as LocalizedField)[sourceLocale],
+          pluginParams,
+          locale,
+          sourceLocale,
+          fieldType,
+          fieldTypePrompt,
+          ctx.currentUserAccessToken as string,
+          field.id,
+          ctx.environment,
+          streamCallbacks,
+          recordContext
+        );
 
-      // Update the form with the newly translated value
-      ctx.setFieldValue(
-        `${field.attributes.api_key}.${locale}`,
-        translatedFieldValue
-      );
+        await ctx.setFieldValue(
+          `${field.attributes.api_key}.${locale}`,
+          translatedFieldValue
+        );
+      } catch (err) {
+        console.warn(`Field translation failed for ${field.attributes.api_key} → ${locale}:`, err);
+        ctx.customToast?.({ type: 'warning', message: `Failed: ${field.attributes.label || field.attributes.api_key} → ${locale}` });
+        // continue to next field/locale
+      }
     }
   }
 }
