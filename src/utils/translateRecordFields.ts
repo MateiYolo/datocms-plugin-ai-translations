@@ -15,7 +15,7 @@
  */
 
 import type { RenderItemFormSidebarPanelCtx } from 'datocms-plugin-sdk';
-import { chatComplete, type ChatMsg } from '../lib/openaiProxy';
+// (kept intentionally empty – proxy helper imported elsewhere)
 import {
   type ctxParamsType,
   modularContentVariations,
@@ -84,6 +84,7 @@ export async function translateRecordFields(
   sourceLocale: string,
   options: TranslateOptions = {}
 ): Promise<void> {
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   // OpenAI SDK removed; all calls go through helper proxy
 
   const currentFormValues = ctx.formValues;
@@ -214,6 +215,8 @@ export async function translateRecordFields(
           `${field.attributes.api_key}.${locale}`,
           translatedFieldValue
         );
+        // Gentle rate-limit to avoid DatoCMS 429s on validation endpoints
+        await sleep(250);
       } catch (err) {
         console.warn(`Field translation failed for ${field.attributes.api_key} → ${locale}:`, err);
         ctx.customToast?.({ type: 'warning', message: `Failed: ${field.attributes.label || field.attributes.api_key} → ${locale}` });

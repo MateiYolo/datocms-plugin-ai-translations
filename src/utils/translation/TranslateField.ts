@@ -280,7 +280,8 @@ async function translateBlockValue(
           fieldPrompt[fieldTypeDictionary[field]?.editor as keyof typeof fieldPrompt] ||
           '';
 
-        source[field] = await translateFieldValue(
+        try {
+          source[field] = await translateFieldValue(
           source[field],
           pluginParams,
           toLocale,
@@ -292,7 +293,12 @@ async function translateBlockValue(
           environment,
           streamCallbacks,
           recordContext
-        );
+          );
+        } catch (err) {
+          // Skip failing nested field but keep processing siblings
+          logger.warning('Nested block field translation failed', { field, error: err });
+          continue;
+        }
       }
     }
   }
