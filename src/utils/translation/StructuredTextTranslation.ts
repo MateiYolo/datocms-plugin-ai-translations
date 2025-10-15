@@ -160,43 +160,61 @@ export async function translateStructuredTextValue(
   const fromLocaleName = localeMapper.of(fromLocale) || fromLocale;
   const toLocaleName = localeMapper.of(toLocale) || toLocale;
 
-  // Construct the prompt using the template system for consistency
-  let prompt = (pluginParams.prompt || '')
-    .replace(
-      '{fieldValue}',
-      `translate the following string array ${JSON.stringify(
-        textValues,
-        null,
-        2
-      )}`
-    )
-    .replace('{fromLocale}', fromLocaleName)
-    .replace('{toLocale}', toLocaleName)
-    .replace('{recordContext}', recordContext || 'Record context: No additional context available.');
-
-  // Clear, explicit instructions for array handling
-  prompt += `
-IMPORTANT: Your response must be a valid JSON array of strings with EXACTLY ${textValues.length} elements. Each element corresponds to the same position in the original array.
+  // Build prompts in batches to avoid token overflow on large rich text
+  const explicitRules = (expectedCount: number) => `
+IMPORTANT: Your response must be a valid JSON array of strings with EXACTLY ${expectedCount} elements. Each element corresponds to the same position in the original array.
 - Preserve ALL empty strings - do not remove or modify them
 - Maintain the exact array length
 - Return only the array of strings in valid JSON format
 - Do not nest the array in an object
 - Preserve all whitespace and spacing patterns`;
 
-  // Log the prompt being sent
-  logger.logPrompt('Structured text translation prompt', prompt);
+  // Helper to produce a single-batch prompt for a slice of values
+  const makePromptForSlice = (slice: string[], totalCount: number) =>
+    (pluginParams.prompt || '')
+      .replace(
+        '{fieldValue}',
+        `translate the following string array ${JSON.stringify(slice, null, 2)}`
+      )
+      .replace('{fromLocale}', fromLocaleName)
+      .replace('{toLocale}', toLocaleName)
+      .replace(
+        '{recordContext}',
+        recordContext || 'Record context: No additional context available.'
+      ) + `\n${explicitRules(slice.length)}\nThis slice is part of a larger array of ${totalCount} items; keep order.`;
+
+  // Partition textValues into batches such that prompt length stays under ~6000 chars
+  const batches: string[][] = [];
+  let current: string[] = [];
+  let currentLen = 0;
+  for (const v of textValues) {
+    const estimated = currentLen + (v?.length || 0);
+    if (estimated > 4800 && current.length > 0) {
+      batches.push(current);
+      current = [v as string];
+      currentLen = (v?.length || 0);
+    } else {
+      current.push(v as string);
+      currentLen = estimated;
+    }
+  }
+  if (current.length) batches.push(current);
+
+  logger.logPrompt('Structured text translation prompt (batched)', `batches=${batches.length}`);
 
   try {
-    const messages: ChatMsg[] = [{ role: 'user', content: prompt }];
-    const translatedText = await chatComplete(messages, {
-      model: pluginParams.gptModel || 'gpt-5',
-      maxTokens: 800,
-    });
+    const allTranslated: string[] = [];
+    for (const slice of batches) {
+      const prompt = makePromptForSlice(slice, textValues.length);
+      const messages: ChatMsg[] = [{ role: 'user', content: prompt }];
+      const translatedText = await chatComplete(messages, {
+        model: pluginParams.gptModel || 'gpt-5',
+        maxTokens: 800,
+      });
     if (streamCallbacks?.onComplete) {
       streamCallbacks.onComplete();
     }
     logger.logResponse('Structured text translation response', translatedText);
-
     try {
       // Clean up response text to handle cases where API might return non-JSON format
       const cleanedTranslatedText = translatedText.trim()
@@ -212,28 +230,30 @@ IMPORTANT: Your response must be a valid JSON array of strings with EXACTLY ${te
         return fieldValue;
       }
 
-      // Check for length mismatch and attempt recovery
-      let processedTranslatedValues = translatedValues;
-      
-      if (translatedValues.length !== textValues.length) {
-        logger.warning(
-          `Translation mismatch: got ${translatedValues.length} values, expected ${textValues.length}`,
-          { original: textValues, translated: translatedValues }
-        );
-        
-        // Try to fix the length mismatch rather than abandoning the translation
-        processedTranslatedValues = ensureArrayLengthsMatch(textValues, translatedValues);
-        
-        logger.info('Adjusted translated values to match original length', {
-          adjustedLength: processedTranslatedValues.length
-        });
-      }
+      // Append translated slice keeping order
+      allTranslated.push(...translatedValues);
+    } catch (jsonError) {
+      logger.error('Failed to parse translation response as JSON', jsonError);
+      logger.error('Raw response text', { text: translatedText });
+      // Skip this slice and continue with others
+      continue;
+    }
 
-      // Reconstruct the inline text portion with the newly translated text
-      const reconstructedObject = reconstructObject(
-        fieldValueWithoutBlocks,
-        processedTranslatedValues
-      ) as StructuredTextNode[];
+    // Check for length mismatch and attempt recovery
+    let processedTranslatedValues = allTranslated;
+    if (processedTranslatedValues.length !== textValues.length) {
+      logger.warning(
+        `Translation mismatch: got ${processedTranslatedValues.length} values, expected ${textValues.length}`,
+        { originalCount: textValues.length }
+      );
+      processedTranslatedValues = ensureArrayLengthsMatch(textValues, processedTranslatedValues);
+    }
+
+    // Reconstruct the inline text portion with the newly translated text
+    const reconstructedObject = reconstructObject(
+      fieldValueWithoutBlocks,
+      processedTranslatedValues
+    ) as StructuredTextNode[];
 
       // Insert block nodes back into their original positions
       let finalReconstructedObject = reconstructedObject;
