@@ -100,6 +100,24 @@ export async function translateRecordFields(
   // OpenAI SDK removed; all calls go through helper proxy
 
   const currentFormValues = ctx.formValues;
+  // --- Batched writes to reduce validation traffic ---
+  const pendingWrites = new Map<string, unknown>();
+  let writeTimer: number | null = null;
+  function queueFieldWrite(key: string, value: unknown) {
+    pendingWrites.set(key, value);
+    if (writeTimer == null) writeTimer = window.setTimeout(flushWrites, 250);
+  }
+  async function flushWrites() {
+    if (!pendingWrites.size) { writeTimer = null; return; }
+    const entries = Array.from(pendingWrites.entries());
+    pendingWrites.clear();
+    writeTimer = null;
+    if (!ctx?.formValues) return;
+    for (const [k, v] of entries) {
+      await ctx.setFieldValue(k, v);
+      await sleep(80);
+    }
+  }
 
   // Get all fields that belong to the current item type
   const fieldsArray = Object.values(ctx.fields).filter(
@@ -167,6 +185,9 @@ export async function translateRecordFields(
     // Use field label for UI display, falling back to API key if no label is defined
     const fieldLabel = field.attributes.label || field.attributes.api_key;
 
+    // Progress counters
+    const totalOps = targetLocales.length;
+    let doneOps = 0;
     // Process each target locale using a small pool to avoid bursts
     const jobs: Job[] = [];
     for (const locale of targetLocales) {
@@ -223,18 +244,21 @@ export async function translateRecordFields(
             streamCallbacks,
             recordContext
           );
-
-          await ctx.setFieldValue(
+          queueFieldWrite(
             `${field.attributes.api_key}.${locale}`,
             translatedFieldValue
           );
-          await sleep(250);
         } catch (err) {
           console.warn(`Field translation failed for ${field.attributes.api_key} → ${locale}:`, err);
           ctx.customToast?.({ type: 'warning', message: `Failed: ${field.attributes.label || field.attributes.api_key} → ${locale}` });
         }
+        doneOps++;
+        ctx.customToast?.({ type: 'notice', message: `Translating… ${doneOps}/${totalOps}` });
       });
     }
     await runPool(jobs, 3);
+    await flushWrites();
   }
+  await flushWrites();
+  ctx.customToast?.({ type: 'notice', message: 'All translations done ✅' });
 }
