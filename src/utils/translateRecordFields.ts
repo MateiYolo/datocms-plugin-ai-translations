@@ -85,6 +85,18 @@ export async function translateRecordFields(
   options: TranslateOptions = {}
 ): Promise<void> {
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  type Job = () => Promise<void>;
+  async function runPool(jobs: Job[], concurrency = 3) {
+    let i = 0;
+    const workers = Array.from({ length: concurrency }, async () => {
+      while (i < jobs.length) {
+        const idx = i++;
+        try { await jobs[idx](); } catch {/* already handled per job */}
+        await sleep(60);
+      }
+    });
+    await Promise.all(workers);
+  }
   // OpenAI SDK removed; all calls go through helper proxy
 
   const currentFormValues = ctx.formValues;
@@ -155,7 +167,8 @@ export async function translateRecordFields(
     // Use field label for UI display, falling back to API key if no label is defined
     const fieldLabel = field.attributes.label || field.attributes.api_key;
 
-    // Process each target locale for this field sequentially
+    // Process each target locale using a small pool to avoid bursts
+    const jobs: Job[] = [];
     for (const locale of targetLocales) {
       // Check for cancellation before starting each locale
       if (options.checkCancellation?.()) {
@@ -195,33 +208,33 @@ export async function translateRecordFields(
       // Generate context about the record to improve translation quality
       const recordContext = generateRecordContext(ctx.formValues, sourceLocale);
 
-      // Perform the actual translation with streaming support
-      try {
-        const translatedFieldValue = await translateFieldValue(
-          (fieldValue as LocalizedField)[sourceLocale],
-          pluginParams,
-          locale,
-          sourceLocale,
-          fieldType,
-          fieldTypePrompt,
-          ctx.currentUserAccessToken as string,
-          field.id,
-          ctx.environment,
-          streamCallbacks,
-          recordContext
-        );
+      jobs.push(async () => {
+        try {
+          const translatedFieldValue = await translateFieldValue(
+            (fieldValue as LocalizedField)[sourceLocale],
+            pluginParams,
+            locale,
+            sourceLocale,
+            fieldType,
+            fieldTypePrompt,
+            ctx.currentUserAccessToken as string,
+            field.id,
+            ctx.environment,
+            streamCallbacks,
+            recordContext
+          );
 
-        await ctx.setFieldValue(
-          `${field.attributes.api_key}.${locale}`,
-          translatedFieldValue
-        );
-        // Gentle rate-limit to avoid DatoCMS 429s on validation endpoints
-        await sleep(250);
-      } catch (err) {
-        console.warn(`Field translation failed for ${field.attributes.api_key} → ${locale}:`, err);
-        ctx.customToast?.({ type: 'warning', message: `Failed: ${field.attributes.label || field.attributes.api_key} → ${locale}` });
-        // continue to next field/locale
-      }
+          await ctx.setFieldValue(
+            `${field.attributes.api_key}.${locale}`,
+            translatedFieldValue
+          );
+          await sleep(250);
+        } catch (err) {
+          console.warn(`Field translation failed for ${field.attributes.api_key} → ${locale}:`, err);
+          ctx.customToast?.({ type: 'warning', message: `Failed: ${field.attributes.label || field.attributes.api_key} → ${locale}` });
+        }
+      });
     }
+    await runPool(jobs, 3);
   }
 }

@@ -10,17 +10,28 @@ export async function translateLarge(
   chat: (msgs: any[], opts: any) => Promise<string>,
   opts: any
 ) {
-  const parts = chunkText(text);
-  const outputs: string[] = [];
-  for (const [i, part] of parts.entries()) {
-    const msgs = [
-      ...messagesBase,
-      { role: 'user', content: `Part ${i + 1}/${parts.length}:\n${part}` },
-    ];
-    const out = await chat(msgs, opts);
-    outputs.push(out);
+  // Use smaller chunks for safety
+  const parts = chunkText(text, 3000);
+  const out: string[] = new Array(parts.length);
+  let i = 0;
+
+  async function worker() {
+    while (i < parts.length) {
+      const idx = i++;
+      const msgs = [
+        ...messagesBase,
+        { role: 'user', content: `Part ${idx + 1}/${parts.length}:\n${parts[idx]}` },
+      ];
+      out[idx] =
+        (await chat(msgs, { ...opts, maxTokens: opts?.maxTokens ?? 800 })) || '';
+      // tiny pacing to avoid bursts
+      await new Promise((r) => setTimeout(r, 80));
+    }
   }
-  return outputs.join('\n');
+
+  // Per-field concurrency = 2
+  await Promise.all([worker(), worker()]);
+  return out.join('\n');
 }
 
 
