@@ -63,6 +63,23 @@ export const translateFieldTypes = {
 export const modularContentVariations = ['framed_single_block'];
 
 /**
+ * Provides a stable sort for GPT model ids we support showing.
+ * Priority: gpt-4.1 > gpt-4o, and within each family: base > mini > nano.
+ */
+function sortGptModels(a: string, b: string): number {
+  const familyPriority = (id: string) =>
+    id.startsWith('gpt-5') ? 0 : id.startsWith('gpt-4.1') ? 1 : id.startsWith('gpt-4o') ? 2 : 9;
+  const variantRank = (id: string) =>
+    id.includes('mini') ? 1 : id.includes('nano') ? 2 : 0;
+
+  const fam = familyPriority(a) - familyPriority(b);
+  if (fam !== 0) return fam;
+  const varCmp = variantRank(a) - variantRank(b);
+  if (varCmp !== 0) return varCmp;
+  return a.localeCompare(b);
+}
+
+/**
  * Fetches the list of available models from OpenAI using the provided API key.
  * It sets the list of model IDs or an error message in the local component state.
  *
@@ -81,17 +98,15 @@ async function fetchAvailableModels(
     // Fetch the list of all available models
     const list = await openai.models.list();
 
-    // Sort in quality/price order: normal, mini, nano (4.1 first, then 4o)
-    const order = [
-      'gpt-4.1',
-      'gpt-4.1-mini',
-      'gpt-4.1-nano',
-      'gpt-4o',
-      'gpt-4o-mini',
-    ];
-    setOptions(
-      order.filter((id) => list.data.map((option) => option.id).includes(id))
+    // Keep only GPT-4.1/4o chat-capable families; exclude realtime/audio/embedding/etc.
+    const ids = list.data.map((m) => m.id);
+    const filtered = ids.filter(
+      (id) =>
+        (id.startsWith('gpt-5') || id.startsWith('gpt-4.1') || id.startsWith('gpt-4o')) &&
+        !/realtime|audio|embedding|tts|vision/i.test(id)
     );
+
+    setOptions(filtered.sort(sortGptModels));
   } catch (error) {
     console.error('Error fetching OpenAI models:', error);
     // If an error occurs, notify the user that we failed to fetch model list
@@ -410,23 +425,8 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
                   <DropdownOption>{listOfModels[0]}</DropdownOption>
                 )}
                 {listOfModels
-                  .filter((model) => [
-                    'gpt-4.1',
-                    'gpt-4.1-mini',
-                    'gpt-4.1-nano',
-                    'gpt-4o',
-                    'gpt-4o-mini',
-                  ].includes(model))
-                  .sort((a, b) => {
-                    const order = [
-                      'gpt-4.1',
-                      'gpt-4.1-mini',
-                      'gpt-4.1-nano',
-                      'gpt-4o',
-                      'gpt-4o-mini',
-                    ];
-                    return order.indexOf(a) - order.indexOf(b);
-                  })
+                  .slice()
+                  .sort(sortGptModels)
                   .map((model) => (
                     <DropdownOption
                       key={model}
