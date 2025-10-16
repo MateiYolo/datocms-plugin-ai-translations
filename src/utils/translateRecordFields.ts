@@ -185,9 +185,7 @@ export async function translateRecordFields(
     // Use field label for UI display, falling back to API key if no label is defined
     const fieldLabel = field.attributes.label || field.attributes.api_key;
 
-    // Progress counters
-    const totalOps = targetLocales.length;
-    let doneOps = 0;
+    // (no per-step toasts)
     // Process each target locale using a small pool to avoid bursts
     const jobs: Job[] = [];
     for (const locale of targetLocales) {
@@ -252,13 +250,12 @@ export async function translateRecordFields(
           console.warn(`Field translation failed for ${field.attributes.api_key} → ${locale}:`, err);
           ctx.customToast?.({ type: 'warning', message: `Failed: ${field.attributes.label || field.attributes.api_key} → ${locale}` });
         }
-        doneOps++;
-        ctx.customToast?.({ type: 'notice', message: `Translating… ${doneOps}/${totalOps}` });
+        // silence incremental toast updates
       });
     }
     await runPool(jobs, 3);
     await flushWrites();
   }
   await flushWrites();
-  ctx.customToast?.({ type: 'notice', message: 'All translations done ✅' });
+  ctx.customToast?.({ type: 'notice', message: 'Translations completed.' });
 }
