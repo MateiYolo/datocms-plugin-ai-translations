@@ -28,6 +28,8 @@ export async function chatComplete(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        keepalive: true,
+        cache: 'no-store',
       });
       if (!resp.ok) {
         if (transientStatus.has(resp.status) && attempt < 3) {

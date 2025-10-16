@@ -207,9 +207,11 @@ IMPORTANT: Your response must be a valid JSON array of strings with EXACTLY ${ex
     for (const slice of batches) {
       const prompt = makePromptForSlice(slice, textValues.length);
       const messages: ChatMsg[] = [{ role: 'user', content: prompt }];
+      const approxLen = slice.reduce((n, s) => n + (s?.length || 0), 0);
+      const maxTokens = Math.min(800, Math.max(300, Math.ceil(approxLen * 0.35)));
       const translatedText = await chatComplete(messages, {
-        model: pluginParams.gptModel || 'gpt-5',
-        maxTokens: 800,
+        model: pluginParams.gptModel || 'gpt-4o-mini',
+        maxTokens,
       });
     if (streamCallbacks?.onComplete) {
       streamCallbacks.onComplete();

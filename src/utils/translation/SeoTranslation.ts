@@ -114,14 +114,15 @@ export async function translateSeoFieldValue(
       },
     ];
 
+    const maxTokens = Math.min(800, Math.max(250, Math.ceil(content.length * 0.35)));
     const translatedText = isLarge
       ? await translateLarge(baseMsgs, content, (msgs, opts) => chatComplete(msgs as ChatMsg[], opts), {
-          model: pluginParams.gptModel || 'gpt-5',
-          maxTokens: 800,
+          model: pluginParams.gptModel || 'gpt-4o-mini',
+          maxTokens,
         })
       : await chatComplete(baseMsgs, {
-          model: pluginParams.gptModel || 'gpt-5',
-          maxTokens: 800,
+          model: pluginParams.gptModel || 'gpt-4o-mini',
+          maxTokens,
         });
     if (streamCallbacks?.onComplete) {
       streamCallbacks.onComplete();
