@@ -74,7 +74,12 @@ export async function translateSeoFieldValue(
     return { title: '', description: '' };
   }
   
-  const seoObject = fieldValue;
+  // DEEP COPY to avoid race conditions when translating to multiple locales concurrently
+  const seoObject: SeoObject = {
+    ...fieldValue,
+    title: fieldValue.title ?? '',
+    description: fieldValue.description ?? '',
+  };
   const seoObjectToTranslate = {
     title: seoObject.title || '',
     description: seoObject.description || '',

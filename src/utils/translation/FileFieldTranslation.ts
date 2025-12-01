@@ -71,11 +71,13 @@ export async function translateFileFieldValue(
 
     logger.info(`Translating gallery with ${fieldValue.length} files`);
     
-    // Translate each file in the gallery
+    // DEEP COPY each file to avoid race conditions when translating to multiple locales concurrently
     const translatedFiles = await Promise.all(
       fieldValue.map(async (file) => {
+        // Deep clone to prevent mutation across concurrent locale translations
+        const fileCopy = JSON.parse(JSON.stringify(file));
         return translateSingleFileMetadata(
-          file,
+          fileCopy,
           pluginParams,
           toLocale,
           fromLocale,
@@ -90,8 +92,10 @@ export async function translateFileFieldValue(
 
   // Handle single file field
   logger.info('Translating single file metadata');
+  // DEEP COPY to avoid race conditions when translating to multiple locales concurrently
+  const fileCopy = JSON.parse(JSON.stringify(fieldValue));
   return translateSingleFileMetadata(
-    fieldValue,
+    fileCopy,
     pluginParams,
     toLocale,
     fromLocale,
